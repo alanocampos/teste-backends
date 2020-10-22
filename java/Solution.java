@@ -1,4 +1,6 @@
-import java.util.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Solution {
   // Essa função recebe uma lista de mensagens, por exemplo:
@@ -13,6 +15,380 @@ public class Solution {
   // Complete a função para retornar uma String com os IDs das propostas válidas no seguinte formato (separado por vírgula):
   // "52f0b3f2-f838-4ce2-96ee-9876dd2c0cf6,51a41350-d105-4423-a9cf-5a24ac46ae84,50cedd7f-44fd-4651-a4ec-f55c742e3477"
   public static String processMessages(List<String> messages) {
-    return "";
+
+    String validProposals = "";
+
+    List<String> proposalIds = getProposalIds(messages);
+
+    for (String proposalId : proposalIds) {
+
+      final boolean isValidLoanValue = isValidLoanValue(proposalId, messages);
+
+      final boolean isValidNumberInstallments = isValidNumberInstallments(proposalId, messages);
+
+      final boolean isValidQtdProponent = isValidQtdProponent(proposalId, messages);
+
+      final boolean isValidQtdProponentMain = isValidQtdProponentMain(proposalId, messages);
+
+      final boolean isValidProponentAge = isValidProponentAge(proposalId, messages);
+
+      final boolean isValidQtdWarranty = isValidQtdWarranty(proposalId, messages);
+
+      final boolean isValidSumWarrantyValue = isValidSumWarrantyValue(proposalId, messages);
+
+      final boolean isValidWarrantyProvince = isValidWarrantyProvince(proposalId, messages);
+
+      final boolean isValidProponentMainMonthlyIncome = isValidProponentMainMonthlyIncome(proposalId, messages);
+
+      if (isValidLoanValue && isValidNumberInstallments && isValidQtdProponent && isValidQtdProponentMain
+        && isValidProponentAge && isValidQtdWarranty && isValidSumWarrantyValue
+        && isValidWarrantyProvince && isValidProponentMainMonthlyIncome) {
+
+        validProposals += proposalId + ",";
+
+      }
+
+    }
+
+    return validProposals.substring(0, validProposals.length() - 1);
+  }
+
+  private static boolean isValidSumWarrantyValue(String proposalId, List<String> messages) {
+
+    final BigDecimal proposalLoanValue = getProposalLoanValue(proposalId, messages).multiply(new BigDecimal("2"));
+
+    BigDecimal sumLoanValue = sumLoanValue(proposalId, messages);
+
+    return sumLoanValue.compareTo(proposalLoanValue) >= 0;
+  }
+
+  private static BigDecimal sumLoanValue(String proposalId, List<String> messages) {
+
+    BigDecimal sumLoanValue = new BigDecimal("0");
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("warranty,added") && !split[7].contains("PR") && !split[7].contains("SC") && !split[7].contains("RS")) {
+          sumLoanValue = sumLoanValue.add(new BigDecimal(split[6]));
+        }
+
+      }
+
+    }
+    return sumLoanValue;
+  }
+
+  private static BigDecimal getProposalLoanValue(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (isProposalCreated(split)) {
+
+          return new BigDecimal(split[5]);
+
+        }
+
+      }
+    }
+
+    return null;
+
+  }
+
+  private static Integer getNumberOfMonthlyInstallments(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (isProposalCreated(split)) {
+
+          return Integer.valueOf(split[6]);
+
+        }
+
+      }
+    }
+
+    return null;
+
+  }
+
+  private static boolean isValidWarrantyProvince(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("warranty,added")) {
+
+          if (split[7].contains("PR") || split[7].contains("SC") || split[7].contains("RS")) {
+
+            return false;
+          }
+        }
+
+      }
+
+    }
+
+    return true;
+  }
+
+  private static boolean isValidQtdWarranty(String proposalId, List<String> messages) {
+
+    int count = 0;
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("warranty,added") && !split[7].contains("PR") && !split[7].contains("SC") && !split[7].contains("RS")) {
+          count++;
+        }
+
+        if (message.contains("warranty,removed")) {
+          count--;
+        }
+
+      }
+
+    }
+
+    return count >= 1;
+  }
+
+  private static boolean isValidProponentAge(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("proponent,added")) {
+
+          Integer age = Integer.valueOf(split[7]);
+
+          if (age < 18) {
+            return false;
+          }
+
+        }
+
+      }
+
+    }
+
+    return true;
+  }
+
+  private static boolean isValidQtdProponentMain(String proposalId, List<String> messages) {
+
+    int count = 0;
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("proponent,added")) {
+          if (split[9].equals("true")) {
+            count++;
+          }
+        }
+
+      }
+
+    }
+
+    return count == 1;
+  }
+
+  private static boolean isValidProponentMainMonthlyIncome(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("proponent,added")) {
+
+          if (split[9].equals("true")) {
+
+            Integer age = Integer.valueOf(split[7]);
+
+            final BigDecimal monthlyIncome = new BigDecimal(split[8]);
+
+            final BigDecimal proposalLoanValue = getProposalLoanValue(proposalId, messages);
+
+            final BigDecimal numberOfMonthlyInstallments = new BigDecimal(String.valueOf(getNumberOfMonthlyInstallments(proposalId, messages)));
+
+            final BigDecimal monthlyValue = proposalLoanValue.divideToIntegralValue(numberOfMonthlyInstallments);
+
+            if (age >= 18 && age <= 24) {
+
+              final BigDecimal income = monthlyValue.multiply(new BigDecimal("4"));
+
+              if (monthlyIncome.compareTo(income) == 1) {
+                return true;
+              }
+
+            } else if (age >= 24 && age <= 50) {
+
+              final BigDecimal income = monthlyValue.multiply(new BigDecimal("3"));
+
+              if (monthlyIncome.compareTo(income) == 1) {
+                return true;
+              }
+
+            } else if (age > 50) {
+
+              final BigDecimal income = monthlyValue.multiply(new BigDecimal("2"));
+
+              if (monthlyIncome.compareTo(income) == 1) {
+                return true;
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    }
+
+    return false;
+  }
+
+  private static boolean isValidQtdProponent(String proposalId, List<String> messages) {
+
+    int count = 0;
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (message.contains("proponent,added")) {
+          count++;
+        }
+
+      }
+
+    }
+
+    return count >= 2;
+  }
+
+  private static boolean isValidNumberInstallments(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (isProposalCreated(split)) {
+
+          boolean isValidNumberInstallments = true;
+
+          Integer numberInstallments = Integer.valueOf(split[6]);
+
+          if (numberInstallments < 24 || numberInstallments > 180) {
+            isValidNumberInstallments = false;
+          }
+          return isValidNumberInstallments;
+
+        }
+
+      }
+
+    }
+
+    return false;
+
+  }
+
+  private static boolean isValidLoanValue(String proposalId, List<String> messages) {
+
+    for (String message : messages) {
+
+      final String[] split = message.split(",");
+
+      if (split[4].equals(proposalId)) {
+
+        if (isProposalCreated(split)) {
+
+          boolean isValidLoanValue = true;
+
+          BigDecimal loanValue = new BigDecimal(split[5]);
+
+          BigDecimal minValue = new BigDecimal("30000.0");
+
+          BigDecimal maxValue = new BigDecimal("3000000.0");
+
+          if (loanValue.compareTo(minValue) == -1) {
+            isValidLoanValue = false;
+          }
+
+          if (loanValue.compareTo(maxValue) == 1) {
+            isValidLoanValue = false;
+          }
+
+          return isValidLoanValue;
+
+        }
+
+      }
+
+    }
+
+    return false;
+
+  }
+
+  private static boolean isProposalCreated(String[] split) {
+
+    return split[1].equals("proposal") && split[2].equals("created");
+  }
+
+  private static List<String> getProposalIds(List<String> messages) {
+
+    List<String> proposalIds = new ArrayList<>();
+
+    messages.forEach(message -> {
+
+      if (message.contains("proposal,created")) {
+
+        final String[] split = message.split(",");
+
+        String proposalId = split[4];
+
+        proposalIds.add(proposalId);
+
+      }
+
+    });
+    return proposalIds;
   }
 }
